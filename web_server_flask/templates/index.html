@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"
+        integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA=="
+        crossorigin="anonymous"></script>
+    <style>
+        /* CSS for the uploaded image */
+        #uploadedImage {
+            max-width: 100%;
+            display: none;
+        }
+
+        /* CSS for the video feed */
+        #video_feed {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+        }
+
+        /* CSS for hiding the uploaded video initially */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Face Recognition App</h1>
+
+    <!-- Form for uploading image -->
+    <form id="imageUploadForm" action="/upload_image" method="post" enctype="multipart/form-data">
+        <label for="imageFile">Upload Image:</label>
+        <input type="file" id="imageFile" name="imageFile" accept=".jpg, .jpeg, .png">
+        <button type="submit">Upload Image</button>
+    </form>
+    <img id="uploadedImage" src="" alt="Uploaded Image">
+    <div id="imageUploadResponse"></div>
+
+    <script>
+        document.getElementById('imageUploadForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+            }).then(response => response.blob())
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    document.getElementById('uploadedImage').src = url;
+                    document.getElementById('uploadedImage').style.display = 'block';
+                    document.getElementById('imageUploadResponse').innerText = '';
+                }).catch(error => {
+                    document.getElementById('imageUploadResponse').innerText = 'Error: ' + error.message;
+                });
+        });
+    </script>
+
+    <hr>
+
+    <!-- Form for uploading video -->
+    <form id="videoUploadForm" action="/upload_video" method="post" enctype="multipart/form-data">
+        <label for="videoFile">Upload Video:</label><br>
+        <input type="file" id="videoFile" name="videoFile" accept="video/mp4,video/avi,video/mov">
+        <button type="submit">Upload Video</button>
+    </form>
+    <div id="videoUploadResponse"></div>
+    <video id="uploadedVideo" controls></video>
+
+    <script>
+        document.getElementById('videoUploadForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+            }).then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('videoUploadResponse').innerText = 'Error: ' + data.error;
+                    } else {
+                        const videoElement = document.getElementById('uploadedVideo');
+                        videoElement.src = data.video_url;
+                        videoElement.style.display = 'block';
+                        document.getElementById('videoUploadResponse').innerText = '';
+                    }
+                }).catch(error => {
+                    document.getElementById('videoUploadResponse').innerText = 'Error: ' + error.message;
+                });
+        });
+    </script>
+
+    <hr>
+
+    <!-- Detected names display -->
+    <div>
+        <h2>Detected Names</h2>
+        <p id="detectedNames">No names detected yet.</p>
+    </div>
+
+    <!-- Video streaming from webcam -->
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 offset-lg-2">
+                <h1>Webcam Feed</h1>
+                <img id="video_feed" src="" alt="Webcam Feed" style="display:none;">
+                <div>
+                    <button id="startStreamBtn">Start Webcam</button>
+                    <button id="stopStreamBtn">Stop Webcam</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const startStreamBtn = document.getElementById('startStreamBtn');
+        const stopStreamBtn = document.getElementById('stopStreamBtn');
+        const detectedNamesElement = document.getElementById('detectedNames');
+
+        const socket = io();
+
+        socket.on('response', (data) => {
+            console.log(data.message);
+        });
+
+        socket.on('persons_recognized', (data) => {
+            detectedNamesElement.innerText = 'Detected Names: ' + data.names.join(', ');
+        });
+
+        startStreamBtn.addEventListener('click', async () => {
+            const response = await fetch('/start_video_feed', { method: 'POST' });
+            const result = await response.json();
+            if (result.status === 'started') {
+                console.log('Video feed started.');
+                document.getElementById('video_feed').src = "{{ url_for('video_feed') }}?_=" + new Date().getTime();
+                document.getElementById('video_feed').style.display = 'block';
+            } else {
+                console.log('Video feed is already running.');
+            }
+        });
+
+        stopStreamBtn.addEventListener('click', () => {
+            console.log('Video feed stopped.');
+            document.getElementById('video_feed').src = '';
+            document.getElementById('video_feed').style.display = 'none';
+            location.reload(); // Reload the page
+            fetch('/stop_video_feed', { method: 'POST' });
+        });
+    </script>
+</body>
+
+</html>

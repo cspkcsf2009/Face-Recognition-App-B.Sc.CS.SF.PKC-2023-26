@@ -1,0 +1,8 @@
+poetry run gunicorn -c gunicorn_config.py app:app
+
+web: python honcho-reload.py
+
+
+honcho start
+# or
+gunicorn -c gunicorn_config.py app:app

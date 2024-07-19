@@ -25,7 +25,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 
 # Define the threshold as a constant
-FACE_MATCH_THRESHOLD = 0.4
+FACE_MATCH_THRESHOLD = 0.5
 
 # Function to dynamically fetch and load images for known people from Firebase Storage
 def load_known_people_images_from_firebase():
@@ -37,7 +37,7 @@ def load_known_people_images_from_firebase():
             person_name = blob.name.split('/')[-2]
             person_images = []
 
-            logging.info(f"Loading images for: {person_name}")
+            # logging.info(f"Loading images for: {person_name}")
             person_blobs = bucket.list_blobs(prefix=f'{blob.name}')
 
             for person_blob in person_blobs:

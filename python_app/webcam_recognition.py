@@ -223,6 +223,32 @@ def process_video(video_capture):
                 for name in detected_names:
                     speak_name(name)
 
+            # Display recognized faces and names
+            for (top, right, bottom, left, name) in recognized_faces:
+                # Draw rectangle around the face
+                cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+    
+                # Draw a filled rectangle below the face for the name
+                text_size, _ = cv2.getTextSize(name, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+                text_width = text_size[0]
+                text_height = text_size[1]
+    
+                # Ensure the filled rectangle is large enough for the text
+                rect_bottom_left = (left, bottom - 35)
+                rect_top_right = (right, bottom)
+                cv2.rectangle(frame, rect_bottom_left, rect_top_right, (0, 0, 255), cv2.FILLED)
+    
+                # Put text with name, ensuring it fits within the rectangle
+                text_position = (left + 6, bottom - 6)
+                if text_position[0] + text_width > right:
+                    # Adjust text position to keep it within the rectangle
+                    text_position = (right - text_width - 6, bottom - 6)
+    
+                cv2.putText(frame, name, text_position, cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+            # Display the frame
+            cv2.imshow("Recognized Faces", frame)
+
             # Check for key press to reset spoken names or stop video
             key = cv2.waitKey(1) & 0xFF
             if key == ord('r'):
@@ -231,14 +257,6 @@ def process_video(video_capture):
             elif key == ord('q'):
                 logger.info("Stopping video stream on 'q' press.")
                 break
-
-            for (top, right, bottom, left, name) in recognized_faces:
-                cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
-                cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
-                cv2.putText(frame, name, (left + 6, bottom - 6),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 1)
-
-            cv2.imshow('Video', frame)
 
             frame_counter += 1
             if frame_counter % GC_INTERVAL == 0:
@@ -250,6 +268,7 @@ def process_video(video_capture):
 
     finally:
         video_capture.release()
+        cv2.destroyAllWindows()
         logger.info("Video capture released.")
         gc.collect()
 

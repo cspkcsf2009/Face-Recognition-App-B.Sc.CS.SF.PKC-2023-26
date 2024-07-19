@@ -3,32 +3,45 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 
 const Webcam = () => {
+    // State variables for managing streaming, video source, detected persons, and loading state
     const [isStreaming, setIsStreaming] = useState(false);
     const [videoSrc, setVideoSrc] = useState('');
     const [detectedPersons, setDetectedPersons] = useState(['Unknown']);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Refs for managing WebSocket connection and spoken names
     const socketRef = useRef(null);
     const spokenNames = useRef(new Set());
 
+    // Backend host URL from environment variables or default to local
     const backendHostUrl = import.meta.env.VITE_BACKEND_HOST_URL || 'http://127.0.0.1:8000';
 
+    // Function to handle speaking names with greetings
     const speakNames = (names) => {
         const greetings = {
-            "Samuvel": "Good Morning Samuvel",
-            "Akash": "Good Evening Akash",
-            "Unknown": " "
+            "Unknown": " ",
+            "A. Samuvel": "Congrats A. Samuel",
+            "N. Indira": "Welcome, Doctor. N. Indira, Respected Principal of this college, let's start the programme with your presidential address",
+            "G. Rexin": "Welcome, Doctor. G. Rexin Thusnavis, respected Vice Principal of this college, let's inaugurate this function",
+            "N. Neela mohan": "Welcome, Doctor. N. Neela mohan, Director, self financed stream of this college, let's felicitate the gathering",
+            "M.S. Kavitha": "Welcome, Mrs M S Kavitha, Head of the Department. It's the time to declare the office bearers of our association DECOS.",
+            "Ms. Jenet": "Welcome Ms. jenet, Faculty, Feathers Software, Nagercoil. It's your time to introduce yourself and your firm",
+            "Ms. Saranya": "Welcome Ms. Saranya, Subject Matter Expert, Php, Feather's Software, Nagercoil. It's your timespsan of 1 hour to elaborate the PHP as easy as possible to our students",
+            "V.A. Abilasha": "Welcome, Abilasha, it's your turn to welcome the gathering",
+            "G. Vennila": "Welcome G. Vennila, It's your turn to thank the gathering"
         };
 
         const voices = speechSynthesis.getVoices();
-        const femaleVoice = voices.find(voice => voice.name.toLowerCase().includes('female'));
+        const selectedVoice = voices.find(voice => voice.lang === 'en-IN' && voice.name.toLowerCase().includes('male'));
+        const defaultVoice = voices.find(voice => voice.lang === 'en-IN');
 
         names.forEach((name) => {
             if (!spokenNames.current.has(name)) {
-                const message = greetings[name] || `Hello ${name}`;
+                const message = greetings[name] || `Congrats ${name}`;
                 const utterance = new SpeechSynthesisUtterance(message);
 
-                utterance.voice = femaleVoice || voices[0];
-                utterance.lang = 'en-US';
+                utterance.voice = selectedVoice || defaultVoice || voices[1];
+                utterance.lang = 'en-IN';
                 utterance.pitch = 1;
                 utterance.rate = 1;
                 utterance.volume = 1;
@@ -39,11 +52,11 @@ const Webcam = () => {
         });
     };
 
+    // Function to handle starting the video stream
     const handleStart = async () => {
         console.log('Start button clicked');
         setIsLoading(true);
 
-        // Initialize WebSocket connection when start button is clicked
         if (!socketRef.current) {
             console.log('Initializing WebSocket connection...');
             socketRef.current = io(backendHostUrl, {
@@ -103,13 +116,16 @@ const Webcam = () => {
         }
     };
 
+    // Function to handle stopping the video stream
     const handleStop = async () => {
         console.log('Stop button clicked');
         setIsLoading(true);
+
         try {
             setIsStreaming(false);
             setVideoSrc('');
             console.log('Video streaming stopped');
+            window.location.reload()
             const response = await axios.post(`${backendHostUrl}/stop_video_feed`);
             console.log('Received response from stop_video_feed:', response);
         } catch (error) {
@@ -119,7 +135,6 @@ const Webcam = () => {
             setIsLoading(false);
         }
 
-        // Disconnect WebSocket when stop button is clicked
         if (socketRef.current) {
             socketRef.current.off();
             socketRef.current.disconnect();
@@ -128,6 +143,7 @@ const Webcam = () => {
         }
     };
 
+    // Function to reset the spoken names
     const handleResetSpokenNames = () => {
         spokenNames.current.clear();
         console.log('Spoken names reset');

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
@@ -8,6 +8,7 @@ const Webcam = () => {
     const [videoSrc, setVideoSrc] = useState('');
     const [detectedPersons, setDetectedPersons] = useState(['Unknown']);
     const [isLoading, setIsLoading] = useState(false);
+    const [isServerHealthy, setIsServerHealthy] = useState(true); // Health status
 
     // Refs for managing WebSocket connection and spoken names
     const socketRef = useRef(null);
@@ -16,17 +17,41 @@ const Webcam = () => {
     // Backend host URL from environment variables or default to local
     const backendHostUrl = import.meta.env.VITE_BACKEND_HOST_URL || 'http://127.0.0.1:8000';
 
+    // Function to check server health
+    const checkServerHealth = useCallback(async () => {
+        try {
+            const response = await axios.get(`${backendHostUrl}/health`);
+            if (response.status === 200 && response.data.status === 'healthy') {
+                setIsServerHealthy(true);
+            } else {
+                setIsServerHealthy(false);
+            }
+        } catch (error) {
+            console.error('Health check failed:', error);
+            setIsServerHealthy(false);
+        }
+    }, [backendHostUrl]);
+
+    // Health check interval
+    useEffect(() => {
+        const interval = setInterval(checkServerHealth, 3600000); // Check every 1 hour
+        return () => clearInterval(interval); // Clean up interval on component unmount
+    }, [checkServerHealth]);
+
     // Function to handle speaking names with greetings
     const speakNames = (names) => {
         const greetings = {
             "Unknown": " ",
-            "A. Samuvel": "Congrats A. Samuel",
+            "A. Samuvel": "Congrats A. Saaamuyel",
+            "Sujith": "Congrats Sujith Laaalaaso Patil",
+            "S. Logith": "Congrats Logith Pandiyan",
+            "M. Sakthi": "Congrats R. Sakthi Pon Raani",
             "N. Indira": "Welcome, Doctor. N. Indira, Respected Principal of this college, let's start the programme with your presidential address",
             "G. Rexin": "Welcome, Doctor. G. Rexin Thusnavis, respected Vice Principal of this college, let's inaugurate this function",
             "N. Neela mohan": "Welcome, Doctor. N. Neela mohan, Director, self financed stream of this college, let's felicitate the gathering",
-            "M.S. Kavitha": "Welcome, Mrs M S Kavitha, Head of the Department. It's the time to declare the office bearers of our association DECOS.",
-            "Ms. Jenet": "Welcome Ms. jenet, Faculty, Feathers Software, Nagercoil. It's your time to introduce yourself and your firm",
-            "Ms. Saranya": "Welcome Ms. Saranya, Subject Matter Expert, Php, Feather's Software, Nagercoil. It's your timespsan of 1 hour to elaborate the PHP as easy as possible to our students",
+            "M. S. Kavitha": "Welcome, Mrs M S Kavitha, Head of the Department. It's the time to declare the office bearers of our association DECOS.",
+            "Ms Jenet": "Welcome Ms. jenet, Faculty, Feathers Software, Nagercoil. It's your time to introduce yourself and your firm",
+            "Ms Saranya": "Welcome Ms. Saranya, Subject Matter Expert, Php, Feather's Software, Nagercoil. It's your timespsan of 1 hour to elaborate the PHP as easy as possible to our students",
             "V.A. Abilasha": "Welcome, Abilasha, it's your turn to welcome the gathering",
             "G. Vennila": "Welcome G. Vennila, It's your turn to thank the gathering"
         };
@@ -57,16 +82,26 @@ const Webcam = () => {
         console.log('Start button clicked');
         setIsLoading(true);
 
+        if (!isServerHealthy) {
+            alert('Server is not healthy. Please try again later.');
+            setIsLoading(false);
+            return;
+        }
+
         if (!socketRef.current) {
             console.log('Initializing WebSocket connection...');
             socketRef.current = io(backendHostUrl, {
-                transports: ['websocket'],
+                transports: ['websocket'], // Use WebSocket transport
                 cors: {
                     origin: backendHostUrl,
                     methods: ["GET", "POST"],
                     credentials: true,
                 },
-                autoConnect: false,
+                reconnection: true, // Enable automatic reconnection
+                reconnectionAttempts: Infinity, // Unlimited reconnection attempts
+                reconnectionDelay: 1000, // Delay between reconnections (in milliseconds)
+                pingInterval: 25000, // Interval of 25 seconds to send ping messages to the server (matches server ping_interval)
+                pingTimeout: 86400000, // Timeout of 24 hours for receiving a ping response from the server (matches server ping_timeout)
             });
 
             socketRef.current.connect();
@@ -89,11 +124,15 @@ const Webcam = () => {
 
             socketRef.current.on('connect_error', (error) => {
                 console.error('Socket connection error:', error);
-                alert('Failed to connect to the server. Please check your connection.');
+                alert('Failed to connect to the server. Please check your socketIO connection.');
             });
 
             socketRef.current.on('disconnect', () => {
                 console.log('WebSocket disconnected');
+            });
+
+            socketRef.current.on('reconnect', (attemptNumber) => {
+                console.log('Reconnected to server on attempt', attemptNumber);
             });
         }
 
@@ -184,6 +223,9 @@ const Webcam = () => {
                         ))}
                     </ul>
                 </div>
+            )}
+            {!isServerHealthy && (
+                <p className="text-red-500 mt-4">Server health check failed. Please try again later.</p>
             )}
         </div>
     );

@@ -1,62 +1,14 @@
 import cv2
-import logging
 import numpy as np
 import face_recognition
-from dotenv import load_dotenv
-import os
-from io import BytesIO
-from firebase_admin import credentials, initialize_app, storage
+from logger_config import setup_logger
+from logics.firebase import load_known_people_images_from_firebase
 
-# Load environment variables from .env
-load_dotenv()
-
-# Access environment variables
-firebase_secret = os.getenv('FIREBASE_SECRET')
-
-# Initialize Firebase Admin SDK
-cred = credentials.Certificate(firebase_secret)
-initialize_app(cred, {
-    'storageBucket': 'face-recognition-storage.appspot.com'
-})
-bucket = storage.bucket()
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+# Colorful logger Configuration
+logger = setup_logger()
 
 # Define the threshold as a constant
 FACE_MATCH_THRESHOLD = 0.5
-
-# Function to dynamically fetch and load images for known people from Firebase Storage
-def load_known_people_images_from_firebase():
-    known_encodings = {}
-    blobs = bucket.list_blobs(prefix='known_people/')
-
-    for blob in blobs:
-        if blob.name.endswith('/') and blob.name != 'known_people/':
-            person_name = blob.name.split('/')[-2]
-            person_images = []
-
-            # logging.info(f"Loading images for: {person_name}")
-            person_blobs = bucket.list_blobs(prefix=f'{blob.name}')
-
-            for person_blob in person_blobs:
-                if person_blob.name.endswith('.jpg'):
-                    logging.info(f"  Recognized {person_name} from {person_blob.name}")
-                    img_bytes = person_blob.download_as_bytes()
-                    img = face_recognition.load_image_file(BytesIO(img_bytes))
-
-                    if len(face_recognition.face_encodings(img)) > 0:
-                        img_encoding = face_recognition.face_encodings(img)[0]
-                        person_images.append((img_encoding, person_blob.name.split("/")[-1]))
-                    else:
-                        logging.warning(f"No face found in image: {person_blob.name}")
-
-            known_encodings[person_name] = person_images
-            logging.info(f"Loaded {len(person_images)} images for {person_name}.")
-
-    logging.info("Finished loading known people images.")
-    return known_encodings
 
 # Function to recognize faces in an image and annotate it
 def recognize_faces_in_image(image_data, known_encodings):
@@ -103,7 +55,6 @@ def annotate_image(image_data, recognized_faces):
     _, annotated_img = cv2.imencode('.jpg', img)
     return annotated_img.tobytes()
 
-
 # Function to process a single frame
 def process_frame(frame, known_encodings):
     try:
@@ -129,12 +80,5 @@ def process_frame(frame, known_encodings):
         return results
 
     except Exception as e:
-        logging.error(f"Error processing frame: {e}")
+        logger.error(f"Error processing frame: {e}")
         return []
-
-# Ensure that known encodings are loaded before processing frames or images
-known_encodings = load_known_people_images_from_firebase()
-
-# Example usage:
-# recognized_faces = recognize_faces_in_image('path_to_image.jpg', known_encodings)
-# annotated_image_data = annotate_image(image_data, recognized_faces)

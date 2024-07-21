@@ -1,13 +1,13 @@
 import multiprocessing
 
 # Number of worker processes
-workers = 1  # Adjust based on performance and resource usage
+workers = 1
 
 # Use 'gevent' worker class for asynchronous workers
 worker_class = 'gevent'
 
-# Set a high timeout value to prevent workers from timing out (e.g., 1 hour)
-timeout = 3600
+# Set a high timeout value to prevent workers from timing out
+timeout = 86400  # 24 hours in seconds
 
 # Keep an idle connection open for 2 seconds
 keepalive = 2

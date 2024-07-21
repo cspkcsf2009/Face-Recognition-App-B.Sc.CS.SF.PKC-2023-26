@@ -11,6 +11,7 @@ class ChangeHandler(FileSystemEventHandler):
         self.process = process
 
     def on_any_event(self, event):
+        print(f"File change detected: {event.src_path}")  # Debugging line
         self.process.terminate()
         self.process.wait()  # Wait for the process to terminate completely
         self.process = start_gunicorn()
@@ -26,6 +27,7 @@ def kill_process_using_port(port):
 
 def start_gunicorn():
     bind_info = get_bind()
+    print(f"Bind info: {bind_info}")  # Debugging line
 
     # Dynamic Port Extraction
     try:

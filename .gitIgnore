@@ -50,3 +50,9 @@ React-Web-Client
 *.out
 *.pid
 *.coverage
+
+
+*.pyo
+*.pyd
+*.db
+uploads/

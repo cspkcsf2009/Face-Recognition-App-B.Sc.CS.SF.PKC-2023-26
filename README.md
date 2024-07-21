@@ -7,27 +7,35 @@
    ```bash
    python install-poetry.py
    ```
+   or
+      ```bash
+   pip install poetry
+   ```
 
-2. Install dependencies:
+3. Install dependencies:
 
    ```bash
    poetry install
    ```
 
-3. Run the application:
+4. Run the application:
 
    ```bash
    poetry run python app.py
    ```
 
-4. Run Gunicorn server:
+5. Run Gunicorn server:
 
    ```bash
    poetry run gunicorn -c gunicorn_config.py app:app
    ```
 
-5. To use Honcho for automatic server restarts:
+6. To use Honcho for automatic server restarts:
 
    ```bash
    poetry run python honcho-reload.py
+   ```
+   or
+   ```bash
+   honcho start
    ```
